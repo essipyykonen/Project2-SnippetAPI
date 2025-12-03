@@ -92,6 +92,40 @@ app.get('/api/snippets/:id', async (req, res) => {
   }
 });
 
+// Update a Snippet
+app.put('/api/snippets/:id', async (req, res) => {
+  try {
+    const updatedSnippet = await Snippet.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true }
+    );
+
+    if (!updatedSnippet) {
+      return res.status(404).json({ message: 'Snippet not found' });
+    }
+
+    res.json(updatedSnippet);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+// Delete a Snippet
+app.delete('/api/snippets/:id', async (req, res) => {
+  try {
+    const deletedSnippet = await Snippet.findByIdAndDelete(req.params.id);
+
+    if (!deletedSnippet) {
+      return res.status(404).json({ message: 'Snippet not found' });
+    }
+
+    res.json({ message: 'Snippet deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 // 7. Start Server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
