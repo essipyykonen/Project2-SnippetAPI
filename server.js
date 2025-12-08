@@ -17,7 +17,69 @@ mongoose.connect(process.env.MONGODB_URI)
   .then(() => console.log('Connected to MongoDB'))
   .catch(err => console.error('DB Connection Error:', err));
 
-// 5. Schema Definition
+// 5. User Model for Log in and Register
+const userSchema = new mongoose.Schema({
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true }
+});
+
+const User = mongoose.model('User', userSchema);
+
+// 6. Register and Log in
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+
+// Register
+app.post("/api/register", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Check if email exists
+    const exists = await User.findOne({ email });
+    if (exists) return res.status(400).json({ message: "Email already registered" });
+
+    // Hash password
+    const hashed = await bcrypt.hash(password, 10);
+
+    // Create user
+    await User.create({ email, password: hashed });
+
+    res.json({ message: "User registered successfully" });
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// Log in
+app.post("/api/login", async (req, res) => {
+  try {
+    const { email, password } = req.body;
+
+    // Find user
+    const user = await User.findOne({ email });
+    if (!user) return res.status(400).json({ message: "Invalid credentials" });
+
+    // Compare password
+    const match = await bcrypt.compare(password, user.password);
+    if (!match) return res.status(400).json({ message: "Invalid credentials" });
+
+    // Create token
+    const token = jwt.sign(
+      { userId: user._id },
+      process.env.JWT_SECRET || "secret123",
+      { expiresIn: "1d" }
+    );
+
+    res.json({ token });
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+
+// 7. Schema Definition
 const snippetSchema = new mongoose.Schema({
   title: { 
     type: String, 
@@ -43,7 +105,7 @@ const snippetSchema = new mongoose.Schema({
 // Create the Model
 const Snippet = mongoose.model('Snippet', snippetSchema);
 
-// 6. Routes
+// 8. Routes
 
 // Test Route
 app.get('/', (req, res) => {
@@ -102,7 +164,7 @@ app.put('/api/snippets/:id', async (req, res) => {
     );
 
     if (!updatedSnippet) {
-      return res.status(404).json({ message: 'Snippet not found' });
+      return res.status(404).json({ message: 'Not found' });
     }
 
     res.json(updatedSnippet);
@@ -117,7 +179,7 @@ app.delete('/api/snippets/:id', async (req, res) => {
     const deletedSnippet = await Snippet.findByIdAndDelete(req.params.id);
 
     if (!deletedSnippet) {
-      return res.status(404).json({ message: 'Snippet not found' });
+      return res.status(404).json({ message: 'Not found' });
     }
 
     res.json({ message: 'Snippet deleted successfully' });
@@ -126,7 +188,7 @@ app.delete('/api/snippets/:id', async (req, res) => {
   }
 });
 
-// 7. Start Server
+// 9. Start Server
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
